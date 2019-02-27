@@ -1,0 +1,60 @@
+---
+title: "Assessment Demo"
+author: "Jens von Bergmann"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  html_notebook: default
+vignette: >
+  %\VignetteIndexEntry{Assessment Demo}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+library(ggplot2)
+library(assessment)
+library(sf)
+library(ggsn)
+properties <- get_assessmemt()
+vancouver <- st_read("~/Google Drive/rails/mountainmath/public/data/vancouver.geojson")
+
+```
+
+```{r}
+properties$gfa=properties$fs
+properties$gfa[!is.na(properties$areai)]=properties$areai[!is.na(properties$areai)]
+properties$fsr=properties$gfa/properties$area
+
+cutoffs=c(-Inf,0.05,0.5,1,2,3,4,6,Inf)
+labels <- c("less than 0.05", "0.05 to 0.5", "0.5 to 1", "1 to 2", "2 to 3", "3 to 4", "4 to 6", "over 6")
+
+#library(RColorBrewer)
+#palette <- setNames(c('#ffffee',brewer.pal(length(labels)-1,'YlOrRd')),labels)
+palette <- setNames(c('#ffffee','#FEFF6C','#FCD153','#F9B738','#EA9823','#B75917','#8D290B','#560007'),labels)
+properties$fsr_discrete <- cut(properties$fsr, breaks=cutoffs, labels=labels)
+
+properties <- properties %>% dplyr::filter(fsr_discrete != labels[1]) # remove empty areas
+
+```
+
+## Mapping the data
+
+```{r, fig.height=4.5, fig.width=5}
+ggplot( ) +
+  geom_sf(data=properties %>% dplyr::filter(!is.na(year)),aes(fill = year),color=NA) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title="Building Age",caption="Vancouver Open Data, processed by MountainMath",fill="Year built") +
+  geom_sf(data=vancouver, color='#808080',fill='NA') +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(), 
+        axis.ticks = element_blank(),
+        panel.grid.major = element_line(colour = "white"), 
+        panel.grid.minor = element_line(colour = "white"),
+        panel.background = element_blank(), 
+        axis.line = element_blank()) +
+  north(vancouver, symbol=12, location='bottomleft') +
+  scalebar(vancouver, dist = 1.5, dd2km = TRUE, model = 'WGS84', height = 0.01)
+```
+
